@@ -1,5 +1,6 @@
 import express from "express";
 import puppeteer from "puppeteer"
+import 'dotenv/config'
 import htmlform from "./htmlform.js";
 
 const app = express()
@@ -18,8 +19,20 @@ app.get('/url', async (req, res) => {
             return
         }
         let host = new URL(amazonurl)
-       
-        const browser = await puppeteer.launch();
+
+        const browser = await puppeteer.launch({
+            args: [
+                "--disable-setuid-sandbox",
+                "--no-sandbox",
+                "--single-process",
+                "--no-zygote",
+            ],
+            executablePath:
+                process.env.NODE_ENV === "production"
+                    ? process.env.PUPPETEER_EXECUTABLE_PATH
+                    : puppeteer.executablePath(),
+        });
+
         const page = await browser.newPage();
 
         page.once('request', () => {
@@ -38,7 +51,7 @@ app.get('/url', async (req, res) => {
             'Accept-Encoding': 'gzip, compress, deflate, br',
             Host: host.hostname
         })
-
+       page.setDefaultTimeout(90000)
         if (response.status() !== 200) {
             res.send(`<h3> status : ${response.status()} </h3>`)
             return
